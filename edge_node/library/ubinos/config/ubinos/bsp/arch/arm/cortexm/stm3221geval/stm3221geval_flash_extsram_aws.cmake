@@ -1,0 +1,15 @@
+#
+# Copyright (c) 2019 Sung Ho Park and CSOS
+# 
+# SPDX-License-Identifier: Apache-2.0
+#
+
+set_cache(UBINOS__BSP__LINK_MEMMAP_FLASH_ORIGIN  0x08000000 STRING)
+set_cache(UBINOS__BSP__LINK_MEMMAP_FLASH_LENGTH  0x000E0000 STRING)
+
+set_cache(UBINOS__BSP__LINK_MEMMAP_FLASH2_ORIGIN 0x080E0000 STRING)
+set_cache(UBINOS__BSP__LINK_MEMMAP_FLASH2_LENGTH 0x00020000 STRING)
+
+include(${CMAKE_CURRENT_LIST_DIR}/stm3221geval_flash_extsram.cmake)
+
+

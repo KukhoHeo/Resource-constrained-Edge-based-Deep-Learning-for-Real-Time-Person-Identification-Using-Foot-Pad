@@ -1,0 +1,79 @@
+;
+; Copyright (c) 2009 Sung Ho Park
+;
+; SPDX-License-Identifier: Apache-2.0
+;
+
+; --------------------------------------------------------------------------------
+
+print "begin"
+
+; --------------------------------------------------------------------------------
+; initialize and start the debugger
+
+RESet
+SYStem.RESet
+SYStem.CPU NRF52840QI
+SYStem.CONFIG.DEBUGPORTTYPE SWD
+IF COMBIPROBE()||UTRACE()
+(
+  SYStem.CONFIG.CONNECTOR MIPI20T
+)
+; nReset is likely to be configured as GPIO - use SYSRESETREQ only
+SYStem.Option EnReset OFF
+SYStem.Option DUALPORT ON
+SYStem.MemAccess DAP
+SYStem.JtagClock CTCK 10MHz
+Trace.DISable
+SYStem.Up
+
+; --------------------------------------------------------------------------------
+; turn on ram power
+Data.Set AD:0x40000900 %Long 0x0000FFFF
+Data.Set AD:0x40000910 %Long 0x0000FFFF
+Data.Set AD:0x40000920 %Long 0x0000FFFF
+Data.Set AD:0x40000930 %Long 0x0000FFFF
+Data.Set AD:0x40000940 %Long 0x0000FFFF
+Data.Set AD:0x40000950 %Long 0x0000FFFF
+Data.Set AD:0x40000960 %Long 0x0000FFFF
+Data.Set AD:0x40000970 %Long 0x0000FFFF
+Data.Set AD:0x40000980 %Long 0x0000FFFF
+
+; --------------------------------------------------------------------------------
+; Flash programming
+
+; prepare flash programming (declarations)
+&flashsize=0x100000
+&pagesize=0x1000
+
+FLASH.RESet
+FLASH.Create 1. 0x00000000++(&flashsize-1) &pagesize TARGET Long
+FLASH.Create 2. 0x10001000++0x0FFF &pagesize NOP Long  ; UICR area
+
+FLASH.TARGET 0x20000000 0x20001000 0x800 ~~~~/flash_writer.elf
+
+; ReProgram Flash
+FLASH.ReProgram 0x00000000++0x00026FFF
+Data.LOAD.IntelHex ~~~~/nrf52_softdevice.hex
+FLASH.ReProgram OFF
+FLASH.ReProgram 0x00027000++0x000C9000
+Data.LOAD.Elf ~~~~/app.elf
+FLASH.ReProgram OFF
+
+; --------------------------------------------------------------------------------
+
+Register.Set PC 0x00000A81
+
+Break.Set main
+Mode.Hll
+SYStem.Option.IMASKASM ON
+SYStem.Option.IMASKHLL ON
+; Probe.ARM
+
+; --------------------------------------------------------------------------------
+
+print "end"
+
+ENDDO
+
+

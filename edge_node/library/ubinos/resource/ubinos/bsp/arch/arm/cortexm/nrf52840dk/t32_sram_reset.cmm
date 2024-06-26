@@ -1,0 +1,51 @@
+;
+; Copyright (c) 2009 Sung Ho Park
+;
+; SPDX-License-Identifier: Apache-2.0
+;
+
+; --------------------------------------------------------------------------------
+
+print "begin"
+
+; --------------------------------------------------------------------------------
+; initialize and start the debugger
+
+RESet
+SYStem.RESet
+SYStem.CPU NRF52840QI
+SYStem.CONFIG.DEBUGPORTTYPE SWD
+IF COMBIPROBE()||UTRACE()
+(
+  SYStem.CONFIG.CONNECTOR MIPI20T
+)
+; nReset is likely to be configured as GPIO - use SYSRESETREQ only
+SYStem.Option EnReset OFF
+SYStem.Option DUALPORT ON
+SYStem.MemAccess DAP
+SYStem.JtagClock CTCK 10MHz
+Trace.DISable
+SYStem.Up
+
+; --------------------------------------------------------------------------------
+; Load
+
+Data.LOAD.Elf ~~~~/app.elf
+
+; --------------------------------------------------------------------------------
+
+Register.Set PC Reset_Handler
+
+Break.Set main
+Mode.Hll
+SYStem.Option.IMASKASM ON
+SYStem.Option.IMASKHLL ON
+; Probe.ARM
+
+; --------------------------------------------------------------------------------
+
+print "end"
+
+ENDDO
+
+

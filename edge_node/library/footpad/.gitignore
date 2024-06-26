@@ -1,0 +1,13 @@
+/output/
+/env/
+/.settings/
+/.externalToolBuilders/
+
+__pycache__/
+*.pyc
+
+/make/Makefile.bak
+/make/custom.mk
+/make/custom.py
+
+/app/foot_original_ml_test_train/testmodels

@@ -1,0 +1,57 @@
+;
+; Copyright (c) 2021 Sung Ho Park
+;
+; SPDX-License-Identifier: Apache-2.0
+;
+
+; --------------------------------------------------------------------------------
+
+print "begin"
+
+; --------------------------------------------------------------------------------
+; initialize and start the debugger
+
+RESet
+SYStem.RESet
+SYStem.CPU STM32L476ZG
+SYStem.CONFIG.DEBUGPORTTYPE SWD
+IF hardware.COMBIPROBE()||hardware.UTRACE()
+(
+  SYStem.CONFIG.CONNECTOR MIPI20T
+)
+SYStem.Option DUALPORT ON
+SYStem.MemAccess DAP
+SYStem.JtagClock CTCK 10MHz
+SYStem.Up
+
+; --------------------------------------------------------------------------------
+; Flash programming
+
+FLASH.RESet
+FLASH.Create  1. 0x08000000--0x0807FFFF 0x800 TARGET Quad
+FLASH.Create  2. 0x08080000--0x080FFFFF 0x800 TARGET Quad
+
+FLASH.TARGET 0x20000000 0x20001000 0x1000 ~~~~/flash_writer.elf /DualPort
+
+; ReProgram Flash
+FLASH.ReProgram ALL
+Data.LOAD.Elf ~~~~/app.elf
+FLASH.ReProgram OFF
+
+; --------------------------------------------------------------------------------
+
+Register.Set PC Reset_Handler
+
+Break.Set main
+Mode.Hll
+SYStem.Option.IMASKASM ON
+SYStem.Option.IMASKHLL ON
+; Probe.ARM
+
+; --------------------------------------------------------------------------------
+
+print "end"
+
+ENDDO
+
+

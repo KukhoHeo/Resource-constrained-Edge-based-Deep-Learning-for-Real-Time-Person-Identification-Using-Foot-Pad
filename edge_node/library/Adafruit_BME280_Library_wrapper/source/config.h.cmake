@@ -1,0 +1,9 @@
+////////
+
+
+#cmakedefine01 INCLUDE__ADAFRUIT_BME280_LIBRARY
+
+#if (INCLUDE__ADAFRUIT_BME280_LIBRARY == 1)
+
+#endif /* (INCLUDE__ADAFRUIT_BME280_LIBRARY == 1) */
+

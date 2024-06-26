@@ -1,0 +1,52 @@
+;
+; Copyright (c) 2009 Sung Ho Park
+; 
+; SPDX-License-Identifier: Apache-2.0
+;
+
+print "begin"
+
+RES
+SYS.RES
+SYS.CPU ARM926EJ
+SYS.JtagClock Rtck
+SYS.MODE.Attach
+IF (run())
+	BREAK
+
+MAP.BOnchip 0x00200000--0x0027FFFF
+
+r.s cpsr 0xD3
+
+d.s 0xFFFFF124 %l 0xFFFFFFFF
+d.s 0xFFFFF128 %l 0xFFFFFFFF
+d.s 0xFFFFFC14 %l 0xFFFFFFFF
+
+d.s 0xFFFFFC20 %l 0x00004001
+WAIT 10.ms
+d.s 0xFFFFFC28 %l 0x2060bf09
+WAIT 10.ms
+d.s 0xFFFFFC2C %l 0x207c7f0c
+WAIT 10.ms
+d.s 0xFFFFFC30 %l 0x00000100
+WAIT 10.ms
+d.s 0xFFFFFC30 %l 0x00000102
+WAIT 10.ms
+
+data.load.elf ~~~~/sys_init.elf /NOLINES
+register.set pc 0x00300000
+break.set usrmain_end
+go
+wait !run()
+
+data.load.elf ~~~~/app.elf /nocode
+register.set pc 0x00200000
+
+break.set main
+Mode.Mix
+
+print "end"
+ENDDO
+
+
+

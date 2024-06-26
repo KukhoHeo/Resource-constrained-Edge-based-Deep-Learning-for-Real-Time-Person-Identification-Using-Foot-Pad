@@ -1,0 +1,94 @@
+;
+; Copyright (c) 2009 Sung Ho Park
+;
+; SPDX-License-Identifier: Apache-2.0
+;
+
+; --------------------------------------------------------------------------------
+
+print "begin"
+
+; --------------------------------------------------------------------------------
+; initialize and start the debugger
+
+RESet
+SYStem.RESet
+SYStem.CPU NRF52840QI
+SYStem.CONFIG.DEBUGPORTTYPE SWD
+IF COMBIPROBE()||UTRACE()
+(
+  SYStem.CONFIG.CONNECTOR MIPI20T
+)
+; nReset is likely to be configured as GPIO - use SYSRESETREQ only
+SYStem.Option EnReset OFF
+SYStem.Option DUALPORT ON
+SYStem.MemAccess DAP
+SYStem.JtagClock CTCK 10MHz
+Trace.DISable
+SYStem.Up
+
+; --------------------------------------------------------------------------------
+; initialize OFFCHIP trace (ETM, ITM)
+IF COMBIPROBE()||UTRACE()||Analyzer()
+(
+  ; set PinMux and enable Clocks
+  ; CLOCK.TRACECONFIG.TRACEMUX = Parallel, 32MHz
+  Data.Set AD:0x4000055C %Long 0x00020000
+  ; TraceClk P0.07 - Output, H0D1
+  Data.Set AD:0x5000071C %Long 0x00000303
+  ; TraceData[0] P1.00 - Output, H0D1
+  Data.Set AD:0x50000A00 %Long 0x00000303
+  ; TraceData[1] P0.11 - Output, H0D1
+  Data.Set AD:0x5000072C %Long 0x00000303
+  ; TraceData[2] P0.12 - Output, H0D1
+  Data.Set AD:0x50000730 %Long 0x00000303
+  ; TraceData[3] P1.09 - Output, H0D1
+  Data.Set AD:0x50000A24 %Long 0x00000303
+
+  TPIU.PortSize 4
+  TPIU.PortMode Continuous
+  ITM.DataTrace CorrelatedData
+  ITM.ON
+  ETM.Trace ON
+  ETM.ON
+)
+IF COMBIPROBE()||UTRACE()
+(
+  Trace.METHOD CAnalyzer
+  Trace.AutoInit ON
+  IF CAnalyzer.FEATURE(TPIU.TERMINATION)
+  (
+    ; pins have limited output current with low supply voltage -> disable Termination
+    Trace.TERMination OFF
+  )
+  Trace.AutoFocus
+)
+IF Analyzer()
+(
+  Trace.METHOD Analyzer
+  Trace.AutoInit ON
+  Trace.AutoFocus
+)
+
+; --------------------------------------------------------------------------------
+; Load
+
+Data.LOAD.Elf ~~~~/app.elf /nocode
+
+; --------------------------------------------------------------------------------
+
+Register.Set PC Reset_Handler
+
+Break.Set main
+Mode.Hll
+SYStem.Option.IMASKASM ON
+SYStem.Option.IMASKHLL ON
+; Probe.ARM
+
+; --------------------------------------------------------------------------------
+
+print "end"
+
+ENDDO
+
+

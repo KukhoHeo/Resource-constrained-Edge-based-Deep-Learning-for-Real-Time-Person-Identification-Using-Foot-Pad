@@ -1,0 +1,10 @@
+////////
+
+
+#cmakedefine01 INCLUDE__MP_COURSE_EXAMPLES
+
+#if (INCLUDE__MP_COURSE_EXAMPLES == 1)
+
+#endif /* (INCLUDE__MP_COURSE_EXAMPLES == 1) */
+
+

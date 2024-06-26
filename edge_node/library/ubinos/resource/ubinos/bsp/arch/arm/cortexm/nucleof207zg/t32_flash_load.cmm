@@ -1,0 +1,74 @@
+;
+; Copyright (c) 2009 Sung Ho Park
+;
+; SPDX-License-Identifier: Apache-2.0
+;
+
+; --------------------------------------------------------------------------------
+
+print "begin"
+
+; --------------------------------------------------------------------------------
+; initialize and start the debugger
+
+RESet
+SYStem.RESet
+SYStem.CPU STM32F207ZG
+SYStem.CONFIG.DEBUGPORTTYPE SWD
+IF hardware.COMBIPROBE()||hardware.UTRACE()
+(
+  SYStem.CONFIG.CONNECTOR MIPI34
+)
+SYStem.Option DUALPORT ON
+SYStem.MemAccess DAP
+SYStem.JtagClock CTCK 10MHz
+SYStem.Up
+
+; --------------------------------------------------------------------------------
+; Flash programming
+
+FLASH.RESet
+FLASH.Create 1. 0x08000000--0x08003FFF TARGET Byte 0.
+FLASH.Create 1. 0x08004000--0x08007FFF TARGET Byte 1.
+FLASH.Create 1. 0x08008000--0x0800BFFF TARGET Byte 2.
+FLASH.Create 1. 0x0800C000--0x0800FFFF TARGET Byte 3.
+FLASH.Create 1. 0x08010000--0x0801FFFF TARGET Byte 4.
+FLASH.Create 1. 0x08020000--0x0803FFFF TARGET Byte 5.
+FLASH.Create 1. 0x08040000--0x0805FFFF TARGET Byte 6.
+FLASH.Create 1. 0x08060000--0x0807FFFF TARGET Byte 7.
+FLASH.Create 1. 0x08080000--0x0809FFFF TARGET Byte 8.
+FLASH.Create 1. 0x080A0000--0x080BFFFF TARGET Byte 9.
+FLASH.Create 1. 0x080C0000--0x080DFFFF TARGET Byte 10.
+FLASH.Create 1. 0x080E0000--0x080FFFFF TARGET Byte 11.
+
+; For Main Flash memory boot mode flash memory is aliased to address 0x0
+; Because SYSCFG_MEMRMP:MEM_MODE[1:0] is not indicating active memory remap
+; we are comparing flash reset vector against reset vector at alias address
+Data.ComPare 0x0--0x7 0x08000000
+IF !FOUND()
+    FLASH.CreateALIAS 0x00000000--0x000FFFFF 0x08000000
+
+FLASH.TARGET 0x20000000 EAHB:0x20001000 0x2000 ~~~~/flash_writer.elf /DualPort
+
+; ReProgram Flash
+FLASH.ReProgram ALL
+Data.LOAD.Elf ~~~~/app.elf
+FLASH.ReProgram OFF
+
+; --------------------------------------------------------------------------------
+
+Register.Set PC Reset_Handler
+
+Break.Set main
+Mode.Hll
+SYStem.Option.IMASKASM ON
+SYStem.Option.IMASKHLL ON
+; Probe.ARM
+
+; --------------------------------------------------------------------------------
+
+print "end"
+
+ENDDO
+
+

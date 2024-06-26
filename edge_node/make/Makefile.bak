@@ -1,0 +1,5 @@
+CONFIG_DIR ?= ../library/footpad/app
+CONFIG_NAME ?= foot_original_stm32footpad
+
+include makefile.mk
+

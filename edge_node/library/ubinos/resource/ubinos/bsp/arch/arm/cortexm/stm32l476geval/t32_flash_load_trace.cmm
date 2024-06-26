@@ -1,0 +1,127 @@
+;
+; Copyright (c) 2021 Sung Ho Park
+;
+; SPDX-License-Identifier: Apache-2.0
+;
+
+; --------------------------------------------------------------------------------
+
+print "begin"
+
+; --------------------------------------------------------------------------------
+; initialize and start the debugger
+
+RESet
+SYStem.RESet
+SYStem.CPU STM32L476ZG
+SYStem.CONFIG.DEBUGPORTTYPE SWD
+IF hardware.COMBIPROBE()||hardware.UTRACE()
+(
+  SYStem.CONFIG.CONNECTOR MIPI20T
+)
+SYStem.Option DUALPORT ON
+SYStem.MemAccess DAP
+SYStem.JtagClock CTCK 10MHz
+Trace.DISable
+SYStem.Up
+
+; --------------------------------------------------------------------------------
+; initialize OFFCHIP trace (ETM, ITM)
+IF COMBIPROBE()||UTRACE()||Analyzer()
+(
+  ; set PinMux and enable Clocks
+  ; DBGMCU
+  Data.Set AD:0xE0042004 %Long Data.Long(AD:0xE0042004)|0xE0
+  ; RCC_AHB2ENR.GPIOE_EN
+  Data.Set AD:0x4002104c %Long Data.Long(AD:0x4002104c)|0x10
+  ; GPIOE[2] = TraceClk
+  ; AFRL
+  Data.Set AD:0x48001020 %Long (Data.Long(AD:0x48001020)&~(0xf<<(2.*4.)))|(0x0<<(2.*4.))
+  ; OSPEED
+  Data.Set AD:0x48001008 %Long (Data.Long(AD:0x48001008)&~(0x3<<(2.*2.)))|(0x3<<(2.*2.))
+  ; MODE
+  Data.Set AD:0x48001000 %Long (Data.Long(AD:0x48001000)&~(0x3<<(2.*2.)))|(0x2<<(2.*2.))
+  ; GPIOE[3] = TraceD0
+  ; AFRL
+  Data.Set AD:0x48001020 %Long (Data.Long(AD:0x48001020)&~(0xf<<(3.*4.)))|(0x0<<(3.*4.))
+  ; OSPEED
+  Data.Set AD:0x48001008 %Long (Data.Long(AD:0x48001008)&~(0x3<<(3.*2.)))|(0x3<<(3.*2.))
+  ; MODE
+  Data.Set AD:0x48001000 %Long (Data.Long(AD:0x48001000)&~(0x3<<(3.*2.)))|(0x2<<(3.*2.))
+  ; GPIOE[4] = TraceD1
+  ; AFRL
+  Data.Set AD:0x48001020 %Long (Data.Long(AD:0x48001020)&~(0xf<<(4.*4.)))|(0x0<<(4.*4.))
+  ; OSPEED
+  Data.Set AD:0x48001008 %Long (Data.Long(AD:0x48001008)&~(0x3<<(4.*2.)))|(0x3<<(4.*2.))
+  ; MODE
+  Data.Set AD:0x48001000 %Long (Data.Long(AD:0x48001000)&~(0x3<<(4.*2.)))|(0x2<<(4.*2.))
+  ; GPIOE[5] = TraceD2
+  ; AFRL
+  Data.Set AD:0x48001020 %Long (Data.Long(AD:0x48001020)&~(0xf<<(5.*4.)))|(0x0<<(5.*4.))
+  ; OSPEED
+  Data.Set AD:0x48001008 %Long (Data.Long(AD:0x48001008)&~(0x3<<(5.*2.)))|(0x3<<(5.*2.))
+  ; MODE
+  Data.Set AD:0x48001000 %Long (Data.Long(AD:0x48001000)&~(0x3<<(5.*2.)))|(0x2<<(5.*2.))
+  ; GPIOE[6] = TraceD3
+  ; AFRL
+  Data.Set AD:0x48001020 %Long (Data.Long(AD:0x48001020)&~(0xf<<(6.*4.)))|(0x0<<(6.*4.))
+  ; OSPEED
+  Data.Set AD:0x48001008 %Long (Data.Long(AD:0x48001008)&~(0x3<<(6.*2.)))|(0x3<<(6.*2.))
+  ; MODE
+  Data.Set AD:0x48001000 %Long (Data.Long(AD:0x48001000)&~(0x3<<(6.*2.)))|(0x2<<(6.*2.))
+
+  TPIU.PortSize 4
+  TPIU.PortMode Continuous
+  ITM.DataTrace CorrelatedData
+  ITM.ON
+  ETM.Trace ON
+  ETM.ON
+)
+IF COMBIPROBE()||UTRACE()
+(
+  Trace.METHOD CAnalyzer
+  Trace.AutoInit ON
+  IF CAnalyzer.FEATURE(TPIU.TERMINATION)
+  (
+    ; pins have limited output current with low supply voltage -> disable Termination
+    ;Trace.TERMination OFF
+  )
+  Trace.AutoFocus
+)
+IF Analyzer()
+(
+  Trace.METHOD Analyzer
+  Trace.AutoInit ON
+  Trace.AutoFocus
+)
+
+; --------------------------------------------------------------------------------
+; Flash programming
+
+FLASH.RESet
+FLASH.Create  1. 0x08000000--0x0807FFFF 0x800 TARGET Quad
+FLASH.Create  2. 0x08080000--0x080FFFFF 0x800 TARGET Quad
+
+FLASH.TARGET 0x20000000 0x20001000 0x1000 ~~~~/flash_writer.elf /DualPort
+
+; ReProgram Flash
+FLASH.ReProgram ALL
+Data.LOAD.Elf ~~~~/app.elf
+FLASH.ReProgram OFF
+
+; --------------------------------------------------------------------------------
+
+Register.Set PC Reset_Handler
+
+Break.Set main
+Mode.Hll
+SYStem.Option.IMASKASM ON
+SYStem.Option.IMASKHLL ON
+; Probe.ARM
+
+; --------------------------------------------------------------------------------
+
+print "end"
+
+ENDDO
+

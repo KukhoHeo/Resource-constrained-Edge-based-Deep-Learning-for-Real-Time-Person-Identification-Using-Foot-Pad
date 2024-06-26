@@ -1,0 +1,63 @@
+;
+; Copyright (c) 2009 Sung Ho Park
+;
+; SPDX-License-Identifier: Apache-2.0
+;
+
+; --------------------------------------------------------------------------------
+
+print "begin"
+
+; --------------------------------------------------------------------------------
+; initialize and start the debugger
+
+RESet
+SYStem.RESet
+SYStem.CPU STM32F769NI
+SYStem.CONFIG.DEBUGPORTTYPE SWD
+IF hardware.COMBIPROBE()||hardware.UTRACE()
+(
+  SYStem.CONFIG.CONNECTOR MIPI20T
+)
+SYStem.Option DUALPORT ON
+SYStem.MemAccess DAP
+SYStem.JtagClock CTCK 10MHz
+Trace.DISable
+SYStem.Up
+
+; --------------------------------------------------------------------------------
+; Flash programming
+
+FLASH.RESet
+FLASH.Create 1. 0x08000000--0x0801FFFF  0x8000 TARGET Byte 0. /AutoInc   ; sector 0..3
+FLASH.Create 1. 0x08020000--0x0803FFFF 0x20000 TARGET Byte 4.
+FLASH.Create 1. 0x08040000--0x0807FFFF 0x40000 TARGET Byte 5.
+FLASH.Create 1. 0x08080000--0x080FFFFF 0x40000 TARGET Byte 6. /AutoInc   ; sector 6..7
+FLASH.Create 1. 0x08100000--0x081FFFFF 0x40000 TARGET Byte 8. /AutoInc   ; sector 8..11
+
+FLASH.CreateALIAS 0x00200000++0x001FFFFF 0x08000000
+
+FLASH.TARGET 0x20000000 EAHB:0x20001000 0x2000 ~~~~/flash_writer.elf /DualPort
+
+; ReProgram Flash
+FLASH.ReProgram ALL
+Data.LOAD.Elf ~~~~/app.elf
+FLASH.ReProgram OFF
+
+; --------------------------------------------------------------------------------
+
+Register.Set PC Reset_Handler
+
+Break.Set main
+Mode.Hll
+SYStem.Option.IMASKASM ON
+SYStem.Option.IMASKHLL ON
+; Probe.ARM
+
+; --------------------------------------------------------------------------------
+
+print "end"
+
+ENDDO
+
+

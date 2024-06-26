@@ -1,0 +1,163 @@
+;
+; Copyright (c) 2009 Sung Ho Park
+; 
+; SPDX-License-Identifier: Apache-2.0
+;
+
+print "begin"
+
+RES
+SYS.RES
+SYS.CPU ARM926EJ
+SYS.JtagClock Rtck
+SYS.MODE.Attach
+IF (run())
+	BREAK
+
+MAP.BOnchip 0x00200000--0x0027FFFF
+
+r.s cpsr 0xD3
+
+d.s 0xFFFFF124 %l 0xFFFFFFFF
+d.s 0xFFFFF128 %l 0xFFFFFFFF
+d.s 0xFFFFFC14 %l 0xFFFFFFFF
+
+d.s 0xFFFFFC20 %l 0x00004001
+WAIT 10.ms
+d.s 0xFFFFFC28 %l 0x2060bf09
+WAIT 10.ms
+d.s 0xFFFFFC2C %l 0x207c7f0c
+WAIT 10.ms
+d.s 0xFFFFFC30 %l 0x00000100
+WAIT 10.ms
+d.s 0xFFFFFC30 %l 0x00000102
+WAIT 10.ms
+
+data.load.elf ~~~~/sys_init.elf /NOLINES
+register.set pc 0x00300000
+break.set usrmain_end
+go
+wait !run()
+
+data.load.elf ~~~~/flash_writer.elf /NOLINES
+register.set pc 0x00300000
+
+&flashaction=address.offset(flashaction)
+print "flashaction &flashaction"
+break.set &flashaction
+go
+wait !run()
+
+&filename="~~~~/app.bin"
+&cmd_none=0
+&cmd_write=1
+&cmd_setboot1=2
+&cmd_setboot0=3
+&cmd_getboot=4
+&cmd_readmem=5
+&cmd_readmembin=6
+&cmd_icache_disable=0xa
+&cmd_icache_enable=0xb
+&cmd_dcache_disable=0xc
+&cmd_dcache_enable=0xd
+&cmd_mmu_disable=0xe
+&cmd_mmu_enable=0xf
+
+&baddr=0x00200000
+&srcptr=v.value(srcptr)
+&dstptr=v.value(dstptr)
+&size=v.value(size)
+&filestart=0x00000000
+&filesize=os.file.size(&filename)
+
+&baddraddr=address.offset(baddr)
+&dstptraddr=address.offset(dstptr)
+&sizeaddr=address.offset(size)
+&cmdaddr=address.offset(cmd)
+
+d.s &baddraddr %l &baddr
+
+d.s &cmdaddr %l &cmd_write
+
+&dstptr=0x00200000
+
+while &filesize>0
+(
+	if &size>&filesize
+	(
+		&size=&filesize
+	)
+	d.s &dstptraddr %l &dstptr
+	d.s &sizeaddr %l &size
+
+	print "srcptr &srcptr"
+	print "dstptr &dstptr"
+	print "size &size"
+	print "filestart &filestart"
+	print "filesize &filesize"
+	
+	data.load.binary &filename &srcptr++&size /skip &filestart
+	go
+	wait !run()
+	
+	&dstptr=&dstptr+&size
+	&filestart=&filestart+&size
+	&filesize=&filesize-&size
+)	
+
+d.s &cmdaddr %l &cmd_mmu_disable
+go
+wait !run()
+
+d.s &cmdaddr %l &cmd_dcache_disable
+go
+wait !run()
+
+d.s &cmdaddr %l &cmd_icache_disable
+go
+wait !run()
+
+;d.s &cmdaddr %l &cmd_getboot
+;go
+;wait !run()
+
+d.s &cmdaddr %l &cmd_setboot1
+go
+wait !run()
+
+;d.s &cmdaddr %l &cmd_getboot
+;go
+;wait !run()
+
+;d.s &cmdaddr %l &cmd_readmem
+;d.s &dstptraddr %l 0x00200000
+;d.s &sizeaddr %l os.file.size(&filename)
+;go
+;wait !run()
+
+break.delete
+
+r.s cpsr 0xD3
+
+d.s 0xFFFFF124 %l 0xFFFFFFFF
+d.s 0xFFFFF128 %l 0xFFFFFFFF
+
+d.s 0xFFFFFC20 %l 0x00004001
+WAIT 10.ms
+d.s 0xFFFFFC28 %l 0x2060bf09
+WAIT 10.ms
+d.s 0xFFFFFC2C %l 0x207c7f0c
+WAIT 10.ms
+d.s 0xFFFFFC30 %l 0x00000100
+WAIT 10.ms
+d.s 0xFFFFFC30 %l 0x00000102
+WAIT 10.ms
+
+data.load.elf ~~~~/app.elf  /nocode
+register.set pc 0x00200000
+
+break.set main
+Mode.Mix
+
+print "end"
+ENDDO
